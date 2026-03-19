@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Spin Calc</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Spin Calc">
+<meta name="theme-color" content="#0B0D10">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --gold: #C9A84C; --gold-light: #F0CC6E; --gold-dim: #7A6025;
+  --silver: #B8C4CE; --silver-light: #D8E4EE;
+  --bg: #0B0D10; --panel: #131620; --panel2: #181C28;
+  --border: #222738; --text: #E8EAED; --muted: #4A5265;
+  --green: #4EBF8A; --red: #E05555;
+  --safe: env(safe-area-inset-bottom, 0px);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; }
+
+/* ── NAV BAR ── */
+.nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--panel); border-top: 1px solid var(--border); display: flex; z-index: 100; padding-bottom: var(--safe); }
+.nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 4px 8px; cursor: pointer; border: none; background: none; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 0.5rem; letter-spacing: 0.1em; text-transform: uppercase; transition: color 0.2s; }
+.nav-btn svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.nav-btn.active { color: var(--gold); }
+
+/* ── SCREENS ── */
+.screen { position: fixed; inset: 0; bottom: 60px; overflow-y: auto; -webkit-overflow-scrolling: touch; display: none; padding: 1rem; }
+.screen.active { display: block; }
+
+/* ── SHARED ── */
+.bebas { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.08em; }
+.gold-grad { background: linear-gradient(135deg, var(--gold-light), var(--gold) 50%, var(--silver)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; margin-bottom: 0.75rem; }
+.card-title { font-family: 'Bebas Neue', sans-serif; font-size: 0.8rem; letter-spacing: 0.14em; color: var(--gold); margin-bottom: 0.75rem; }
+.row { display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap; }
+.field { display: flex; flex-direction: column; gap: 0.25rem; }
+.label { font-size: 0.55rem; color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase; }
+input[type="number"] { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 0.9rem; padding: 0.45rem 0.6rem; width: 90px; outline: none; }
+input[type="number"]:focus { border-color: var(--gold); }
+input.w70 { width: 70px; }
+input.w60 { width: 60px; }
+.pill-row { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+.pill { font-family: 'Bebas Neue', sans-serif; font-size: 0.72rem; letter-spacing: 0.06em; background: var(--bg); color: var(--muted); border: 1px solid var(--border); border-radius: 4px; padding: 0.2rem 0.45rem; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.pill:hover { border-color: var(--gold-dim); color: var(--gold); }
+.pill.active { background: var(--gold-dim); color: var(--gold-light); border-color: var(--gold); }
+.btn { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.1em; border-radius: 6px; padding: 0.5rem 1rem; cursor: pointer; border: none; font-size: 0.9rem; transition: all 0.2s; }
+.btn-gold { background: var(--gold-dim); color: var(--gold-light); border: 1px solid var(--gold); }
+.btn-gold:hover { background: var(--gold); color: #000; }
+.btn-red { background: #2a0f0f; color: var(--red); border: 1px solid var(--red); }
+.btn-green { background: #0f2a1e; color: var(--green); border: 1px solid var(--green); }
+.divider { height: 1px; background: var(--border); margin: 0.75rem 0; }
+.page-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; letter-spacing: 0.08em; margin-bottom: 1rem; }
+
+/* ── SCREEN 1: CALCULATOR ── */
+.ev-badge { display: inline-flex; align-items: baseline; gap: 0.3rem; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.8rem; }
+.ev-num { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; line-height: 1; }
+.table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); margin-top: 0.5rem; }
+table { border-collapse: collapse; width: 100%; min-width: 460px; }
+thead th { font-family: 'Bebas Neue', sans-serif; font-size: 0.72rem; letter-spacing: 0.1em; color: var(--muted); text-align: center; padding: 0.5rem 0.3rem; background: var(--panel); border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 2; }
+thead th.rh { text-align: left; padding-left: 0.6rem; color: var(--gold); min-width: 110px; }
+tbody tr:active td { filter: brightness(1.3); }
+tbody td { text-align: center; padding: 0.4rem 0.25rem; font-size: 0.75rem; font-weight: 500; border: 1px solid #1a1e28; cursor: pointer; }
+tbody td.rh { text-align: left; padding-left: 0.6rem; font-size: 0.65rem; color: var(--silver); background: var(--panel); border-right: 2px solid var(--border); white-space: nowrap; cursor: default; }
+tbody td.imp { background: #0D0F12; color: #2a2e3a; font-size: 0.6rem; cursor: default; }
+tbody td.hl { outline: 2px solid var(--gold-light) !important; outline-offset: -2px; position: relative; z-index: 1; }
+
+/* ── SCREEN 2: LIVE TRACKER ── */
+.tracker-wheel { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 1rem 0; }
+.spin-dot { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border); background: var(--panel); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; font-size: 0.55rem; }
+.spin-dot.dime { background: var(--silver); border-color: var(--silver-light); }
+.spin-dot.gold { background: var(--gold); border-color: var(--gold-light); box-shadow: 0 0 8px var(--gold-dim); }
+.spin-dot.used-dime { background: #1a2020; border-color: #2a3030; }
+.spin-dot.used-gold { background: #1a1500; border-color: #3a2800; }
+.tracker-stat { text-align: center; }
+.tracker-stat-val { font-family: 'Bebas Neue', sans-serif; font-size: 2.2rem; line-height: 1; color: var(--gold-light); }
+.tracker-stat-label { font-size: 0.55rem; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; margin-top: 0.2rem; }
+.tracker-stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin: 0.75rem 0; }
+.tracker-bid-box { background: var(--bg); border: 2px solid var(--gold); border-radius: 10px; padding: 1rem; text-align: center; margin: 0.75rem 0; }
+.tracker-bid-label { font-size: 0.6rem; color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase; }
+.tracker-bid-val { font-family: 'Bebas Neue', sans-serif; font-size: 3rem; line-height: 1.1; }
+.tracker-bid-sub { font-size: 0.62rem; color: var(--muted); margin-top: 0.2rem; }
+.tap-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin: 0.75rem 0; }
+.tap-btn { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 0.08em; border-radius: 10px; padding: 1rem; cursor: pointer; border: none; transition: all 0.15s; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.tap-btn span { font-size: 0.55rem; letter-spacing: 0.1em; font-family: 'DM Mono', monospace; }
+.tap-dime { background: #1a2a2a; color: var(--silver-light); border: 2px solid var(--silver); }
+.tap-dime:active { background: #2a4040; }
+.tap-gold { background: #1a1500; color: var(--gold-light); border: 2px solid var(--gold); }
+.tap-gold:active { background: #2a2000; }
+
+/* ── SCREEN 3: SELLERS ── */
+.seller-card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 0.9rem 1rem; margin-bottom: 0.6rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: border-color 0.2s; }
+.seller-card:active { border-color: var(--gold); }
+.seller-name { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 0.06em; color: var(--gold-light); }
+.seller-meta { font-size: 0.6rem; color: var(--muted); margin-top: 0.2rem; line-height: 1.5; }
+.seller-arrow { color: var(--gold-dim); font-size: 1.2rem; }
+.empty-state { text-align: center; padding: 3rem 1rem; color: var(--muted); font-size: 0.75rem; line-height: 1.8; }
+.empty-state .big { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; color: var(--gold-dim); display: block; margin-bottom: 0.5rem; }
+
+/* ── SCREEN 4: HISTORY ── */
+.break-card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 0.9rem 1rem; margin-bottom: 0.6rem; }
+.break-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
+.break-seller { font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 0.06em; color: var(--gold-light); }
+.break-date { font-size: 0.58rem; color: var(--muted); }
+.break-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; }
+.break-stat { text-align: center; background: var(--bg); border-radius: 5px; padding: 0.4rem 0.2rem; }
+.break-stat-val { font-family: 'Bebas Neue', sans-serif; font-size: 1rem; line-height: 1; }
+.break-stat-label { font-size: 0.5rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 0.15rem; }
+.profit-pos { color: var(--green); }
+.profit-neg { color: var(--red); }
+.summary-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 0.75rem; }
+.summary-stat { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 0.7rem; text-align: center; }
+.summary-val { font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; line-height: 1; }
+.summary-label { font-size: 0.52rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 0.2rem; }
+
+/* ── LOG BREAK MODAL ── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; display: flex; align-items: flex-end; }
+.modal { background: var(--panel); border-radius: 16px 16px 0 0; padding: 1.25rem; width: 100%; max-height: 85vh; overflow-y: auto; border-top: 1px solid var(--border); }
+.modal-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: 0.08em; color: var(--gold); margin-bottom: 1rem; }
+.modal-field { margin-bottom: 0.75rem; }
+.modal-field label { display: block; font-size: 0.58rem; color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 0.3rem; }
+.modal-field input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 0.9rem; padding: 0.5rem 0.7rem; outline: none; }
+.modal-field input:focus { border-color: var(--gold); }
+.modal-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 1rem; }
+.modal-btn { font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 0.1em; border-radius: 8px; padding: 0.7rem; cursor: pointer; border: none; }
+.modal-btn-save { background: var(--gold-dim); color: var(--gold-light); border: 1px solid var(--gold); }
+.modal-btn-cancel { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+
+/* ── SELLER MODAL ── */
+.prize-row { display: flex; gap: 0.6rem; align-items: flex-end; flex-wrap: wrap; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.65rem 0.75rem; margin-bottom: 0.5rem; }
+.prize-row-label { font-family: 'Bebas Neue', sans-serif; font-size: 0.68rem; letter-spacing: 0.1em; width: 100%; margin-bottom: -0.2rem; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     SCREEN 1: CALCULATOR
+══════════════════════════════════════════════════════ -->
+<div class="screen active" id="screen-calc">
+  <div class="page-title bebas gold-grad">Spin Calculator</div>
+
+  <!-- Spot prices -->
+  <div class="card">
+    <div class="card-title">Spot Prices</div>
+    <div class="row">
+      <div class="field"><div class="label">Silver ($/oz)</div><input type="number" id="silverSpot" value="93.80" step="0.5" min="1"></div>
+      <div class="field"><div class="label">Gold ($/oz)</div><input type="number" id="goldSpot" value="5278" step="10" min="100"></div>
+    </div>
+  </div>
+
+  <!-- Bid strategy -->
+  <div class="card">
+    <div class="card-title">Bid Strategy — <span id="marginPctLabel" style="color:var(--gold-light)">80%</span> of EV</div>
+    <input type="range" id="bidMargin" min="30" max="100" value="80" step="5" style="width:100%;accent-color:var(--gold);margin-bottom:0.5rem;">
+    <div class="pill-row">
+      <button class="pill" data-pct="60">60%</button>
+      <button class="pill" data-pct="65">65%</button>
+      <button class="pill" data-pct="70">70%</button>
+      <button class="pill" data-pct="75">75%</button>
+      <button class="pill active" data-pct="80">80%</button>
+      <button class="pill" data-pct="85">85%</button>
+      <button class="pill" data-pct="90">90%</button>
+      <button class="pill" data-pct="95">95%</button>
+      <button class="pill" data-pct="100">100%</button>
+    </div>
+  </div>
+
+  <!-- Prize pool -->
+  <div class="card">
+    <div class="card-title">Gold Rush Prize Pool &nbsp;<span id="totalPacksBadge" style="color:var(--gold);font-size:0.7rem;"></span></div>
+
+    <div class="prize-row">
+      <div class="prize-row-label" style="color:var(--gold-light)">Eagle A</div>
+      <div class="field"><div class="label">Size</div>
+        <div class="pill-row" id="ozRowA">
+          <button class="pill active" data-oz="0.1" data-group="A">1/10</button>
+          <button class="pill" data-oz="0.25" data-group="A">1/4</button>
+          <button class="pill" data-oz="0.5" data-group="A">1/2</button>
+          <button class="pill" data-oz="1" data-group="A">1oz</button>
+        </div>
+      </div>
+      <div class="field"><div class="label">Value ($)</div><input type="number" id="eagleAVal" value="554" step="5" min="0" class="w70"></div>
+      <div class="field"><div class="label"># in wheel</div><input type="number" id="numEagleA" value="1" step="1" min="0" max="10" class="w60"></div>
+    </div>
+
+    <div class="prize-row">
+      <div class="prize-row-label" style="color:#C8A060">Eagle B <span style="color:var(--muted);font-size:0.6rem;">(optional)</span></div>
+      <div class="field"><div class="label">Size</div>
+        <div class="pill-row" id="ozRowB">
+          <button class="pill" data-oz="0.1" data-group="B">1/10</button>
+          <button class="pill active" data-oz="0.25" data-group="B">1/4</button>
+          <button class="pill" data-oz="0.5" data-group="B">1/2</button>
+          <button class="pill" data-oz="1" data-group="B">1oz</button>
+        </div>
+      </div>
+      <div class="field"><div class="label">Value ($)</div><input type="number" id="eagleBVal" value="1382" step="5" min="0" class="w70"></div>
+      <div class="field"><div class="label"># in wheel</div><input type="number" id="numEagleB" value="0" step="1" min="0" max="10" class="w60"></div>
+    </div>
+
+    <div class="prize-row">
+      <div class="prize-row-label" style="color:var(--silver)">Graded Silver</div>
+      <div class="field"><div class="label">Avg Value ($)</div><input type="number" id="gradedSilver" value="95" step="5" min="0" class="w70"></div>
+      <div class="field"><div class="label"># in wheel</div><input type="number" id="numGraded" value="9" step="1" min="0" max="10" class="w60"></div>
+    </div>
+
+    <div style="font-size:0.65rem;color:var(--muted);margin-top:0.5rem;" id="grEVPreview"></div>
+  </div>
+
+  <!-- Quick lookup -->
+  <div class="card">
+    <div class="card-title">Quick Lookup</div>
+    <div class="row" style="margin-bottom:0.75rem;">
+      <div class="field"><div class="label">Spins Left</div><input type="number" id="qlSpins" value="50" min="1" max="50"></div>
+      <div class="field"><div class="label">Gold Rushes Left</div><input type="number" id="qlGold" value="10" min="0" max="10"></div>
+      <div style="flex:1;">
+        <div class="label">Rec. Bid</div>
+        <div class="ev-badge">
+          <div class="ev-num" id="qlResult" style="color:var(--gold-light)">—</div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:0.62rem;color:var(--muted);line-height:1.7;" id="qlBreakdown"></div>
+  </div>
+
+  <!-- Table -->
+  <div class="card-title bebas" style="margin-bottom:0.4rem;">Bid Table · Rows = Spins Left · Cols = Gold Rushes Left</div>
+  <div class="table-wrap">
+    <table id="bidTable"></table>
+  </div>
+  <p style="font-size:0.58rem;color:var(--muted);margin-top:0.75rem;line-height:1.7;">Tap any cell to populate quick lookup. Hover/long-press to see break-even price.</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     SCREEN 2: LIVE TRACKER
+══════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-tracker">
+  <div class="page-title bebas gold-grad">Live Tracker</div>
+
+  <div class="card">
+    <div class="card-title">Active Break</div>
+    <div class="row" style="margin-bottom:0.6rem;">
+      <div class="field" style="flex:1;"><div class="label">Seller / Break Name</div><input type="text" id="trackerSeller" placeholder="e.g. Bleacher Bullion" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:0.85rem;padding:0.45rem 0.6rem;outline:none;"></div>
+    </div>
+    <div class="row">
+      <div class="field"><div class="label">Total Spins</div><input type="number" id="trackerTotal" value="50" min="2" max="100" class="w70"></div>
+      <div class="field"><div class="label">Gold Rushes</div><input type="number" id="trackerGold" value="10" min="1" max="50" class="w70"></div>
+      <button class="btn btn-gold" onclick="resetTracker()">Reset</button>
+    </div>
+  </div>
+
+  <!-- Bid recommendation -->
+  <div class="tracker-bid-box">
+    <div class="tracker-bid-label">Recommended Bid Now</div>
+    <div class="tracker-bid-val gold-grad bebas" id="trackerBid">—</div>
+    <div class="tracker-bid-sub" id="trackerBidSub"></div>
+  </div>
+
+  <!-- Stats -->
+  <div class="tracker-stats-row">
+    <div class="tracker-stat card">
+      <div class="tracker-stat-val" id="tSpinsLeft">50</div>
+      <div class="tracker-stat-label">Spins Left</div>
+    </div>
+    <div class="tracker-stat card">
+      <div class="tracker-stat-val" id="tGoldLeft">10</div>
+      <div class="tracker-stat-label">Gold Left</div>
+    </div>
+    <div class="tracker-stat card">
+      <div class="tracker-stat-val" id="tGoldPct">20%</div>
+      <div class="tracker-stat-label">Gold %</div>
+    </div>
+  </div>
+
+  <!-- Wheel visualization -->
+  <div class="card">
+    <div class="card-title">Wheel State <span style="color:var(--muted);font-size:0.6rem;">— tap dots to manually edit</span></div>
+    <div class="tracker-wheel" id="trackerWheel"></div>
+  </div>
+
+  <!-- Tap buttons -->
+  <div class="tap-btns">
+    <button class="tap-btn tap-dime" onclick="tapSpin('dime')">
+      🪙 DIME
+      <span>Got a silver dime</span>
+    </button>
+    <button class="tap-btn tap-gold" onclick="tapSpin('gold')">
+      🏅 GOLD RUSH
+      <span>Hit a gold pack</span>
+    </button>
+  </div>
+
+  <!-- Log this break -->
+  <button class="btn btn-green" style="width:100%;margin-top:0.25rem;" onclick="openLogModal()">+ Log This Break to History</button>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     SCREEN 3: SELLERS
+══════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-sellers">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+    <div class="page-title bebas gold-grad" style="margin:0;">Sellers</div>
+    <button class="btn btn-gold" onclick="openSellerModal()">+ Add</button>
+  </div>
+  <div id="sellerList"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     SCREEN 4: HISTORY
+══════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-history">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+    <div class="page-title bebas gold-grad" style="margin:0;">Break History</div>
+    <button class="btn btn-gold" onclick="openLogModal()">+ Log</button>
+  </div>
+  <div class="summary-bar" id="historySummary"></div>
+  <div id="historyList"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     NAV BAR
+══════════════════════════════════════════════════════ -->
+<nav class="nav">
+  <button class="nav-btn active" data-screen="calc" onclick="switchScreen('calc',this)">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="15" x2="12" y2="15"/></svg>
+    Calc
+  </button>
+  <button class="nav-btn" data-screen="tracker" onclick="switchScreen('tracker',this)">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+    Live
+  </button>
+  <button class="nav-btn" data-screen="sellers" onclick="switchScreen('sellers',this)">
+    <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    Sellers
+  </button>
+  <button class="nav-btn" data-screen="history" onclick="switchScreen('history',this)">
+    <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    History
+  </button>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════
+     MODALS
+══════════════════════════════════════════════════════ -->
+
+<!-- Log Break Modal -->
+<div class="modal-overlay" id="logModal" style="display:none;" onclick="e => { if(e.target===this) closeLogModal(); }">
+  <div class="modal">
+    <div class="modal-title">Log Break</div>
+    <div class="modal-field"><label>Seller / Break Name</label><input type="text" id="logSeller" placeholder="Bleacher Bullion"></div>
+    <div class="modal-field"><label>Date</label><input type="date" id="logDate"></div>
+    <div class="modal-field"><label>Total Spent ($)</label><input type="number" id="logSpent" placeholder="0.00" step="0.01" min="0"></div>
+    <div class="modal-field"><label>Spins Bought</label><input type="number" id="logSpins" placeholder="0" min="0"></div>
+    <div class="modal-field"><label>Gold Rushes Hit</label><input type="number" id="logGoldHit" placeholder="0" min="0"></div>
+    <div class="modal-field"><label>Total Value Received ($) <span style="color:var(--muted);font-size:0.55rem;">melt + numismatic</span></label><input type="number" id="logValue" placeholder="0.00" step="0.01" min="0"></div>
+    <div class="modal-field"><label>Notes</label><input type="text" id="logNotes" placeholder="Optional"></div>
+    <div class="modal-btns">
+      <button class="modal-btn modal-btn-cancel" onclick="closeLogModal()">Cancel</button>
+      <button class="modal-btn modal-btn-save" onclick="saveBreak()">Save Break</button>
+    </div>
+  </div>
+</div>
+
+<!-- Seller Modal -->
+<div class="modal-overlay" id="sellerModal" style="display:none;">
+  <div class="modal">
+    <div class="modal-title" id="sellerModalTitle">Add Seller</div>
+    <div class="modal-field"><label>Seller Name</label><input type="text" id="sellerName" placeholder="e.g. Bleacher Bullion"></div>
+    <div class="modal-field"><label>Notes / typical spin price</label><input type="text" id="sellerNotes" placeholder="Optional"></div>
+    <div class="divider"></div>
+    <div class="card-title" style="margin-bottom:0.5rem;">Default Prize Pool</div>
+
+    <div class="prize-row" style="margin-bottom:0.5rem;">
+      <div class="prize-row-label" style="color:var(--gold-light)">Eagle A</div>
+      <div class="field"><div class="label">Size</div>
+        <div class="pill-row">
+          <button class="pill active" data-oz="0.1" data-sgroup="A">1/10</button>
+          <button class="pill" data-oz="0.25" data-sgroup="A">1/4</button>
+          <button class="pill" data-oz="0.5" data-sgroup="A">1/2</button>
+          <button class="pill" data-oz="1" data-sgroup="A">1oz</button>
+        </div>
+      </div>
+      <div class="field"><div class="label"># in wheel</div><input type="number" id="sNumEagleA" value="1" min="0" max="10" class="w60"></div>
+    </div>
+
+    <div class="prize-row" style="margin-bottom:0.5rem;">
+      <div class="prize-row-label" style="color:#C8A060">Eagle B</div>
+      <div class="field"><div class="label">Size</div>
+        <div class="pill-row">
+          <button class="pill" data-oz="0.1" data-sgroup="B">1/10</button>
+          <button class="pill active" data-oz="0.25" data-sgroup="B">1/4</button>
+          <button class="pill" data-oz="0.5" data-sgroup="B">1/2</button>
+          <button class="pill" data-oz="1" data-sgroup="B">1oz</button>
+        </div>
+      </div>
+      <div class="field"><div class="label"># in wheel</div><input type="number" id="sNumEagleB" value="0" min="0" max="10" class="w60"></div>
+    </div>
+
+    <div class="modal-field"><label>Graded Silver # in wheel</label><input type="number" id="sNumGraded" value="9" min="0" max="10"></div>
+    <div class="modal-field"><label>Graded Silver Avg Value ($)</label><input type="number" id="sGradedVal" value="95" min="0" step="5"></div>
+    <div class="modal-field"><label>Typical Spins per Break</label><input type="number" id="sSpins" value="50" min="2"></div>
+
+    <div class="modal-btns">
+      <button class="modal-btn modal-btn-cancel" onclick="closeSellerModal()">Cancel</button>
+      <button class="modal-btn modal-btn-save" onclick="saveSeller()">Save Seller</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// STORAGE
+// ═══════════════════════════════════════
+function load(key, def) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch { return def; }
+}
+function save(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+}
+
+let breaks  = load('breaks', []);
+let sellers = load('sellers', []);
+
+// ═══════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════
+function switchScreen(id, btn) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'sellers') renderSellers();
+  if (id === 'history') renderHistory();
+  if (id === 'tracker') renderTracker();
+}
+
+// ═══════════════════════════════════════
+// CALCULATOR LOGIC
+// ═══════════════════════════════════════
+function getPrizes() {
+  const goldSpot = parseFloat(document.getElementById('goldSpot').value) || 5278;
+  const ozA = parseFloat(document.querySelector('.pill.active[data-group="A"]')?.dataset.oz || 0.1);
+  const ozB = parseFloat(document.querySelector('.pill.active[data-group="B"]')?.dataset.oz || 0.25);
+  const valA = parseFloat(document.getElementById('eagleAVal').value) || (goldSpot * ozA * 1.05);
+  const valB = parseFloat(document.getElementById('eagleBVal').value) || (goldSpot * ozB * 1.05);
+  const valS = parseFloat(document.getElementById('gradedSilver').value) || 95;
+  const nA = Math.max(0, parseInt(document.getElementById('numEagleA').value) || 0);
+  const nB = Math.max(0, parseInt(document.getElementById('numEagleB').value) || 0);
+  const nS = Math.max(0, parseInt(document.getElementById('numGraded').value) || 0);
+  const total = nA + nB + nS || 10;
+  const silverSpot = parseFloat(document.getElementById('silverSpot').value) || 93.80;
+  const dimeMelt = silverSpot * 0.07234;
+  const goldRushEV = (nA * valA + nB * valB + nS * valS) / total;
+  return { valA, valB, valS, nA, nB, nS, total, dimeMelt, goldRushEV };
+}
+
+function calcEV(spinsLeft, goldLeft, dimeMelt, goldRushEV) {
+  if (spinsLeft <= 0) return 0;
+  goldLeft = Math.max(0, Math.min(goldLeft, spinsLeft));
+  return (1 - goldLeft/spinsLeft) * dimeMelt + (goldLeft/spinsLeft) * goldRushEV;
+}
+
+function getColor(val, dimeMelt) {
+  if (val <= dimeMelt + 0.5) return { bg: '#120808', text: '#6a3a3a' };
+  if (val < 20)  return { bg: '#0e1f0e', text: '#4EBF7A' };
+  if (val < 50)  return { bg: '#182e10', text: '#7EEF6A' };
+  if (val < 100) return { bg: '#253010', text: '#BEE840' };
+  if (val < 175) return { bg: '#302808', text: '#E8C840' };
+  if (val < 275) return { bg: '#382008', text: '#E89820' };
+  if (val < 400) return { bg: '#381208', text: '#E86020' };
+  return { bg: '#2e0808', text: '#E83020' };
+}
+
+function getMargin() {
+  return (parseInt(document.getElementById('bidMargin').value) || 80) / 100;
+}
+
+function generate() {
+  const prizes = getPrizes();
+  const t = prizes.nA + prizes.nB + prizes.nS;
+  const badge = document.getElementById('totalPacksBadge');
+  badge.textContent = `${t}/10 packs`;
+  badge.style.color = t === 10 ? 'var(--gold)' : 'var(--red)';
+  document.getElementById('grEVPreview').textContent =
+    `Gold rush avg: $${prizes.goldRushEV.toFixed(2)} · Dime melt: $${prizes.dimeMelt.toFixed(2)}`;
+
+  const maxS = 50, maxG = 10, margin = getMargin();
+  const table = document.getElementById('bidTable');
+  table.innerHTML = '';
+  const thead = document.createElement('thead');
+  let hrow = '<tr><th class="rh">Spins ↓ / Gold →</th>';
+  for (let g = 0; g <= maxG; g++) hrow += `<th>${g===0?'0🚫':g+'🏅'}</th>`;
+  thead.innerHTML = hrow + '</tr>';
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  for (let s = maxS; s >= 1; s--) {
+    let row = `<tr><td class="rh">${s}</td>`;
+    for (let g = 0; g <= maxG; g++) {
+      if (g > s) { row += `<td class="imp">—</td>`; continue; }
+      const val = calcEV(s, g, prizes.dimeMelt, prizes.goldRushEV);
+      const rec = val * margin;
+      const {bg, text} = getColor(val, prizes.dimeMelt);
+      row += `<td style="background:${bg};color:${text}" data-s="${s}" data-g="${g}" title="BE:$${val.toFixed(0)} Bid:$${rec.toFixed(0)}">$${rec.toFixed(0)}</td>`;
+    }
+    row += '</tr>';
+    tbody.innerHTML += row;
+  }
+  table.appendChild(tbody);
+  tbody.querySelectorAll('td[data-s]').forEach(td => {
+    td.addEventListener('click', () => {
+      document.querySelectorAll('td.hl').forEach(e => e.classList.remove('hl'));
+      td.classList.add('hl');
+      document.getElementById('qlSpins').value = td.dataset.s;
+      document.getElementById('qlGold').value = td.dataset.g;
+      updateQL();
+    });
+  });
+  updateQL();
+}
+
+function updateQL() {
+  const prizes = getPrizes();
+  const s = parseInt(document.getElementById('qlSpins').value) || 0;
+  const g = parseInt(document.getElementById('qlGold').value) || 0;
+  const val = calcEV(s, g, prizes.dimeMelt, prizes.goldRushEV);
+  const rec = val * getMargin();
+  const res = document.getElementById('qlResult');
+  res.textContent = g > s ? 'N/A' : '$' + rec.toFixed(0);
+  const {text} = getColor(val, prizes.dimeMelt);
+  res.style.color = text;
+  const pGold = (s > 0 && g > 0) ? Math.min(g, s) / s : 0;
+  const bd = document.getElementById('qlBreakdown');
+  if (g > 0 && s > 0) {
+    const pA = prizes.nA/prizes.total, pB = prizes.nB/prizes.total, pS = prizes.nS/prizes.total;
+    bd.innerHTML = `<span style="color:var(--gold-light)">${(pGold*100).toFixed(1)}%</span> chance of gold rush · Break-even: $${val.toFixed(0)}<br>If gold rush: ${(pA*100).toFixed(0)}% Eagle A · ${(pB*100).toFixed(0)}% Eagle B · ${(pS*100).toFixed(0)}% silver`;
+  } else {
+    bd.innerHTML = g === 0 ? '<span style="color:var(--red)">No gold rushes left — dimes only</span>' : '';
+  }
+  document.querySelectorAll('td.hl').forEach(e => e.classList.remove('hl'));
+  const cell = document.querySelector(`td[data-s="${s}"][data-g="${g}"]`);
+  if (cell) { cell.classList.add('hl'); cell.scrollIntoView({behavior:'smooth', block:'center'}); }
+}
+
+// OZ buttons
+function setupOzBtns(group, valId) {
+  document.querySelectorAll(`.pill[data-group="${group}"]`).forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll(`.pill[data-group="${group}"]`).forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      const gs = parseFloat(document.getElementById('goldSpot').value) || 5278;
+      const inp = document.getElementById(valId);
+      if (!inp._manual) inp.value = (gs * parseFloat(this.dataset.oz) * 1.05).toFixed(0);
+      generate();
+    });
+  });
+  document.getElementById(valId).addEventListener('input', function() { this._manual = true; generate(); });
+}
+setupOzBtns('A', 'eagleAVal');
+setupOzBtns('B', 'eagleBVal');
+
+document.getElementById('goldSpot').addEventListener('input', function() {
+  const gs = parseFloat(this.value) || 5278;
+  ['A','B'].forEach(g => {
+    const id = g==='A'?'eagleAVal':'eagleBVal';
+    const inp = document.getElementById(id);
+    if (!inp._manual) {
+      const oz = parseFloat(document.querySelector(`.pill.active[data-group="${g}"]`)?.dataset.oz || (g==='A'?0.1:0.25));
+      inp.value = (gs * oz * 1.05).toFixed(0);
+    }
+  });
+  generate();
+});
+
+['silverSpot','gradedSilver','numEagleA','numEagleB','numGraded'].forEach(id =>
+  document.getElementById(id).addEventListener('input', generate));
+document.getElementById('qlSpins').addEventListener('input', updateQL);
+document.getElementById('qlGold').addEventListener('input', updateQL);
+
+// Margin
+document.getElementById('bidMargin').addEventListener('input', function() {
+  document.getElementById('marginPctLabel').textContent = this.value + '%';
+  document.querySelectorAll('[data-pct]').forEach(b =>
+    b.classList.toggle('active', parseInt(b.dataset.pct) === parseInt(this.value)));
+  generate();
+});
+document.querySelectorAll('[data-pct]').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const pct = parseInt(this.dataset.pct);
+    document.getElementById('bidMargin').value = pct;
+    document.getElementById('marginPctLabel').textContent = pct + '%';
+    document.querySelectorAll('[data-pct]').forEach(b => b.classList.toggle('active', parseInt(b.dataset.pct) === pct));
+    generate();
+  });
+});
+
+// ═══════════════════════════════════════
+// LIVE TRACKER
+// ═══════════════════════════════════════
+let trackerState = { spinsLeft: 50, goldLeft: 10, total: 50, totalGold: 10, spins: [] };
+
+function resetTracker() {
+  const total = parseInt(document.getElementById('trackerTotal').value) || 50;
+  const gold  = parseInt(document.getElementById('trackerGold').value)  || 10;
+  trackerState = { spinsLeft: total, goldLeft: gold, total, totalGold: gold, spins: [] };
+  renderTracker();
+}
+
+function tapSpin(type) {
+  if (trackerState.spinsLeft <= 0) return;
+  if (type === 'gold' && trackerState.goldLeft <= 0) type = 'dime';
+  trackerState.spins.push(type);
+  trackerState.spinsLeft--;
+  if (type === 'gold') trackerState.goldLeft--;
+  renderTracker();
+}
+
+function renderTracker() {
+  const { spinsLeft, goldLeft, total, totalGold, spins } = trackerState;
+  document.getElementById('tSpinsLeft').textContent = spinsLeft;
+  document.getElementById('tGoldLeft').textContent = goldLeft;
+  const pct = spinsLeft > 0 ? (goldLeft / spinsLeft * 100).toFixed(1) : '0';
+  document.getElementById('tGoldPct').textContent = pct + '%';
+
+  // Bid recommendation using calc prizes
+  const prizes = getPrizes();
+  const val = calcEV(spinsLeft, goldLeft, prizes.dimeMelt, prizes.goldRushEV);
+  const rec = val * getMargin();
+  const bidEl = document.getElementById('trackerBid');
+  if (spinsLeft > 0) {
+    bidEl.textContent = '$' + rec.toFixed(0);
+    document.getElementById('trackerBidSub').textContent =
+      `Break-even: $${val.toFixed(0)} · ${pct}% gold rush chance`;
+  } else {
+    bidEl.textContent = 'DONE';
+    document.getElementById('trackerBidSub').textContent = 'Wheel complete';
+  }
+
+  // Wheel dots
+  const wheel = document.getElementById('trackerWheel');
+  wheel.innerHTML = '';
+  for (let i = 0; i < total; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'spin-dot';
+    const isGoldSlot = i < totalGold;
+    const spinResult = spins[i];
+    if (spinResult === 'gold') dot.classList.add('used-gold');
+    else if (spinResult === 'dime') dot.classList.add('used-dime');
+    else if (isGoldSlot) dot.classList.add('gold');
+    else dot.classList.add('dime');
+    dot.title = spinResult ? spinResult : (isGoldSlot ? 'gold rush slot' : 'dime slot');
+    wheel.appendChild(dot);
+  }
+
+  // Sync quick lookup inputs
+  document.getElementById('qlSpins').value = spinsLeft;
+  document.getElementById('qlGold').value = goldLeft;
+}
+
+document.getElementById('trackerTotal').addEventListener('input', resetTracker);
+document.getElementById('trackerGold').addEventListener('input', resetTracker);
+
+// ═══════════════════════════════════════
+// SELLERS
+// ═══════════════════════════════════════
+let editingSellerId = null;
+
+function renderSellers() {
+  const list = document.getElementById('sellerList');
+  if (sellers.length === 0) {
+    list.innerHTML = '<div class="empty-state"><span class="big">No Sellers Yet</span>Add your favorite Whatnot sellers to quickly load their prize pool configs.</div>';
+    return;
+  }
+  list.innerHTML = sellers.map((s, i) => `
+    <div class="seller-card" onclick="loadSeller(${i})">
+      <div>
+        <div class="seller-name">${s.name}</div>
+        <div class="seller-meta">${s.spins} spins · ${s.nA} Eagle A · ${s.nB} Eagle B · ${s.nS} Silver · $${s.gradedVal} avg<br>${s.notes||''}</div>
+      </div>
+      <div style="display:flex;gap:0.5rem;align-items:center;">
+        <button class="btn btn-gold" style="padding:0.3rem 0.6rem;font-size:0.7rem;" onclick="event.stopPropagation();editSeller(${i})">Edit</button>
+        <button class="btn btn-red" style="padding:0.3rem 0.6rem;font-size:0.7rem;" onclick="event.stopPropagation();deleteSeller(${i})">Del</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function loadSeller(i) {
+  const s = sellers[i];
+  // Load into calculator
+  document.getElementById('numEagleA').value = s.nA;
+  document.getElementById('numEagleB').value = s.nB;
+  document.getElementById('numGraded').value = s.nS;
+  document.getElementById('gradedSilver').value = s.gradedVal;
+  // Set oz buttons
+  ['A','B'].forEach(g => {
+    const oz = g === 'A' ? s.ozA : s.ozB;
+    document.querySelectorAll(`.pill[data-group="${g}"]`).forEach(b => {
+      b.classList.toggle('active', parseFloat(b.dataset.oz) === parseFloat(oz));
+    });
+    const gs = parseFloat(document.getElementById('goldSpot').value) || 5278;
+    const id = g==='A'?'eagleAVal':'eagleBVal';
+    document.getElementById(id).value = (gs * parseFloat(oz) * 1.05).toFixed(0);
+    document.getElementById(id)._manual = false;
+  });
+  // Load into tracker
+  document.getElementById('trackerTotal').value = s.spins;
+  document.getElementById('trackerGold').value = s.nA + s.nB + s.nS;
+  document.getElementById('trackerSeller').value = s.name;
+  resetTracker();
+  generate();
+  switchScreen('calc', document.querySelector('[data-screen="calc"]'));
+}
+
+function openSellerModal(id = null) {
+  editingSellerId = id;
+  document.getElementById('sellerModalTitle').textContent = id !== null ? 'Edit Seller' : 'Add Seller';
+  if (id !== null) {
+    const s = sellers[id];
+    document.getElementById('sellerName').value = s.name;
+    document.getElementById('sellerNotes').value = s.notes || '';
+    document.getElementById('sNumEagleA').value = s.nA;
+    document.getElementById('sNumEagleB').value = s.nB;
+    document.getElementById('sNumGraded').value = s.nS;
+    document.getElementById('sGradedVal').value = s.gradedVal;
+    document.getElementById('sSpins').value = s.spins;
+    ['A','B'].forEach(g => {
+      const oz = g==='A'?s.ozA:s.ozB;
+      document.querySelectorAll(`[data-sgroup="${g}"]`).forEach(b =>
+        b.classList.toggle('active', parseFloat(b.dataset.oz) === parseFloat(oz)));
+    });
+  } else {
+    document.getElementById('sellerName').value = '';
+    document.getElementById('sellerNotes').value = '';
+    document.getElementById('sNumEagleA').value = 1;
+    document.getElementById('sNumEagleB').value = 0;
+    document.getElementById('sNumGraded').value = 9;
+    document.getElementById('sGradedVal').value = 95;
+    document.getElementById('sSpins').value = 50;
+  }
+  document.getElementById('sellerModal').style.display = 'flex';
+}
+
+function closeSellerModal() { document.getElementById('sellerModal').style.display = 'none'; }
+
+function editSeller(i) { openSellerModal(i); }
+
+function saveSeller() {
+  const name = document.getElementById('sellerName').value.trim();
+  if (!name) { alert('Please enter a seller name'); return; }
+  const ozA = parseFloat(document.querySelector('[data-sgroup="A"].active')?.dataset.oz || 0.1);
+  const ozB = parseFloat(document.querySelector('[data-sgroup="B"].active')?.dataset.oz || 0.25);
+  const s = {
+    name, notes: document.getElementById('sellerNotes').value,
+    nA: parseInt(document.getElementById('sNumEagleA').value)||0,
+    nB: parseInt(document.getElementById('sNumEagleB').value)||0,
+    nS: parseInt(document.getElementById('sNumGraded').value)||0,
+    gradedVal: parseFloat(document.getElementById('sGradedVal').value)||95,
+    spins: parseInt(document.getElementById('sSpins').value)||50,
+    ozA, ozB
+  };
+  if (editingSellerId !== null) sellers[editingSellerId] = s;
+  else sellers.push(s);
+  save('sellers', sellers);
+  closeSellerModal();
+  renderSellers();
+}
+
+function deleteSeller(i) {
+  if (!confirm('Delete this seller?')) return;
+  sellers.splice(i, 1);
+  save('sellers', sellers);
+  renderSellers();
+}
+
+// Seller modal oz pills
+document.querySelectorAll('[data-sgroup]').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const g = this.dataset.sgroup;
+    document.querySelectorAll(`[data-sgroup="${g}"]`).forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+
+// ═══════════════════════════════════════
+// HISTORY / LOG BREAK
+// ═══════════════════════════════════════
+function openLogModal() {
+  document.getElementById('logDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('logSeller').value = document.getElementById('trackerSeller').value || '';
+  document.getElementById('logSpins').value = '';
+  document.getElementById('logSpent').value = '';
+  document.getElementById('logGoldHit').value = '';
+  document.getElementById('logValue').value = '';
+  document.getElementById('logNotes').value = '';
+  document.getElementById('logModal').style.display = 'flex';
+}
+
+function closeLogModal() { document.getElementById('logModal').style.display = 'none'; }
+
+function saveBreak() {
+  const b = {
+    id: Date.now(),
+    seller: document.getElementById('logSeller').value || 'Unknown',
+    date: document.getElementById('logDate').value,
+    spent: parseFloat(document.getElementById('logSpent').value) || 0,
+    spins: parseInt(document.getElementById('logSpins').value) || 0,
+    goldHit: parseInt(document.getElementById('logGoldHit').value) || 0,
+    value: parseFloat(document.getElementById('logValue').value) || 0,
+    notes: document.getElementById('logNotes').value
+  };
+  breaks.unshift(b);
+  save('breaks', breaks);
+  closeLogModal();
+  renderHistory();
+  switchScreen('history', document.querySelector('[data-screen="history"]'));
+}
+
+function deleteBreak(id) {
+  if (!confirm('Delete this break?')) return;
+  breaks = breaks.filter(b => b.id !== id);
+  save('breaks', breaks);
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  const summary = document.getElementById('historySummary');
+
+  if (breaks.length === 0) {
+    summary.innerHTML = '';
+    list.innerHTML = '<div class="empty-state"><span class="big">No Breaks Logged</span>Log your Whatnot breaks to track profit/loss over time.</div>';
+    return;
+  }
+
+  const totalSpent = breaks.reduce((a,b) => a + b.spent, 0);
+  const totalValue = breaks.reduce((a,b) => a + b.value, 0);
+  const totalPL = totalValue - totalSpent;
+  const plColor = totalPL >= 0 ? 'var(--green)' : 'var(--red)';
+
+  summary.innerHTML = `
+    <div class="summary-stat"><div class="summary-val">$${totalSpent.toFixed(0)}</div><div class="summary-label">Total Spent</div></div>
+    <div class="summary-stat"><div class="summary-val">$${totalValue.toFixed(0)}</div><div class="summary-label">Total Value</div></div>
+    <div class="summary-stat"><div class="summary-val" style="color:${plColor}">${totalPL>=0?'+':''}$${totalPL.toFixed(0)}</div><div class="summary-label">P&amp;L</div></div>
+  `;
+
+  list.innerHTML = breaks.map(b => {
+    const pl = b.value - b.spent;
+    const plColor = pl >= 0 ? 'var(--green)' : 'var(--red)';
+    return `
+    <div class="break-card">
+      <div class="break-header">
+        <div>
+          <div class="break-seller">${b.seller}</div>
+          <div class="break-date">${b.date}${b.notes ? ' · ' + b.notes : ''}</div>
+        </div>
+        <button class="btn btn-red" style="padding:0.2rem 0.5rem;font-size:0.65rem;" onclick="deleteBreak(${b.id})">Del</button>
+      </div>
+      <div class="break-stats">
+        <div class="break-stat"><div class="break-stat-val">$${b.spent.toFixed(0)}</div><div class="break-stat-label">Spent</div></div>
+        <div class="break-stat"><div class="break-stat-val">${b.spins}</div><div class="break-stat-label">Spins</div></div>
+        <div class="break-stat"><div class="break-stat-val">${b.goldHit}</div><div class="break-stat-label">Gold Hits</div></div>
+        <div class="break-stat"><div class="break-stat-val" style="color:${plColor}">${pl>=0?'+':''}$${pl.toFixed(0)}</div><div class="break-stat-label">P&amp;L</div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+generate();
+resetTracker();
+
+// PWA service worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
