@@ -1,2 +1,0 @@
-# Spin-Calc
-Spinning Calculator
